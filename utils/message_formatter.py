@@ -53,28 +53,35 @@ def format_trade_message(direction, last_row, df, lookback=5):
     return msg
 
 
-def format_rejection_alert(signal_type, confirm_price, confirm_time):
+def format_rejection_alert(signal_type, confirm_price, confirm_time, early_confirmation: bool = False):
     icon = "🟢" if signal_type == "BUY" else "🔴"
+    early_confirmation_msg = "🚨 Early Confirmation" if early_confirmation else "🔢 Close candle confirmation"
     msg = f"""
 ❌ Signal Rejected
         
 {icon} {signal_type} (No Confirmed)  
 ⛔ Close without confirmation: {confirm_price:.2f}  
 🕒 Time: {confirm_time}
-        """
+
+
+{early_confirmation_msg}
+"""
     return msg
 
 
-def format_confirmation_alert(signal_type, confirm_price, confirm_time):
+def format_confirmation_alert(signal_type, confirm_price, confirm_time, early_confirmation: bool = False):
     
     icon = "🟢" if signal_type == "BUY" else "🔴"
+    early_confirmation_msg = "🚨 Early Confirmation" if early_confirmation else "🔢 Close candle confirmation"
     msg = f"""
 ✅  Signal Confirmed
                             
 {icon} {signal_type} (Confirmed)
 ✅ Confirmed at: {confirm_price:.2f}
 🕒 Time: {confirm_time}
-    """
+
+{early_confirmation_msg}
+"""
     return msg
 
 

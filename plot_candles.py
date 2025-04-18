@@ -1,14 +1,20 @@
+import json
+from datetime import timezone
+
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-import numpy as np
-import json
-from trades import resumen_trades
-from indicators import calculate_super_tdi, calculate_bollinger, smma, simulate_trend_signals
-from config import  LENGTH
 from plotly.subplots import make_subplots
-from datetime import timezone
 
+from config import LENGTH
+from indicators import (
+    calculate_bollinger,
+    calculate_super_tdi,
+    simulate_trend_signals,
+    smma,
+)
+from trades import resumen_trades
 
 pio.templates.default = "plotly_dark"
 
@@ -146,7 +152,6 @@ def plot_candles(df: pd.DataFrame, title: str = "XAUUSD M15"):
 
 if __name__ == "__main__":
     df = load_data_csv("history/gold_minute_15.csv")
-
     df = calculate_bollinger(df)
     df['trendline'] = smma(df['close'], length=LENGTH)
     df = simulate_trend_signals(df)

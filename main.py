@@ -1,22 +1,26 @@
-from capital.historical_candles import get_historical_data_looped, get_historical_candles
+from datetime import datetime, timedelta
+
 from capital.epics import Epics
-from capital.resolutions import Resolutions
-from capital.login import login
-from datetime import datetime, timezone
-from config import EMAIL_ACCOUNT, API_PASSWORD, API_KEY
 from capital.get_epic_by_name import get_epic_by_name
+from capital.historical_candles import (
+    get_historical_candles,
+    get_historical_data_looped,
+)
+from capital.login import login
+from capital.resolutions import Resolutions
+from config import API_KEY, API_PASSWORD, EMAIL_ACCOUNT
 
 if __name__ == "__main__":
     headers, _, _, _ = login(EMAIL_ACCOUNT, API_PASSWORD, API_KEY)
-
-    #2025-04-01 16:40:00+00:00,3132.69,3132.79,3132.15,3132.54,145
+    start = datetime(2025, 4, 13, 22, 0) - timedelta(hours=4)
+    until = datetime.now() - timedelta(hours=4)
+    
     df = get_historical_data_looped(
         headers=headers,
         epic=Epics.GOLD,
         resolution=Resolutions.MINUTE_1,
-        from_dt=datetime(2025, 4, 1, 12, 00),
-        until_dt=datetime(2025, 4, 1, 20, 20),
-        save_to_csv=False
+        from_dt=start,
+        until_dt=until,
+        save_to_csv=True
     )
-    df.to_csv("history/back.csv", index=False)
-    breakpoint()
+    df.to_csv("history/gold_minute_1_14_18_30_18_04.csv", index=False)

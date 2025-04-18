@@ -173,8 +173,3 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Ignore all files in the history directory
-history/*
-
-# Ignore all files in the history directory
-history/*

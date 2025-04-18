@@ -1,14 +1,30 @@
-import pandas as pd
-from typing import Dict, Any
-from datetime import datetime, timedelta
-from config import BOLLINGER_PERIOD, DESVIATION, MULTIPLIER, ATR_PERIOD, USE_ATR, LENGTH
-from indicators import calculate_bollinger, smma, simulate_trend_signals, calculate_super_tdi
-from utils.telegram_alert import send_telegram_alert
-from utils.message_formatter import format_trade_message
 import json
-from datetime import timezone
 import traceback
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict
+
+import pandas as pd
+
+from config import (
+    ATR_PERIOD,
+    BOLLINGER_PERIOD,
+    DESVIATION,
+    EARLY_CONFIRMATION_BODY_MULTIPLIER,
+    LENGTH,
+    MULTIPLIER,
+    USE_ATR,
+)
+from indicators import (
+    calculate_bollinger,
+    calculate_super_tdi,
+    simulate_trend_signals,
+    smma,
+)
 from signal_tracker import SignalTracker
+from utils.message_formatter import format_trade_message
+from utils.telegram_alert import send_telegram_alert
+
+
 class RealTimeHandler:
     def __init__(self, historical_df: pd.DataFrame, timeframe: int = 15):
         self.df = historical_df.tail(500).copy().reset_index(drop=True)
@@ -107,7 +123,6 @@ class RealTimeHandler:
         self.generate_indicators()
         self.check_anticipate_signal()
       
-        self.df = self.df.tail(200).reset_index(drop=True)
         
         
     def generate_indicators(self):
@@ -115,6 +130,9 @@ class RealTimeHandler:
         self.df['trendline'] = smma(self.df['close'], length=LENGTH)
         self.df = simulate_trend_signals(self.df, multiplier=MULTIPLIER, atr_period=ATR_PERIOD, use_atr=USE_ATR)
         self.df = calculate_super_tdi(self.df)
+
+        if len(self.df) > 200:
+            self.df = self.df.tail(200).reset_index(drop=True)
         
     def prorcess_new_candle(self, price, candle_time):
         self.current_candle = {
@@ -127,12 +145,16 @@ class RealTimeHandler:
         }
         print(f"New candle with open: {price} at {candle_time}")
         self.next_open_time = candle_time + timedelta(minutes=self.timeframe)
+        if self.signal_tracker.pending_confirmation and self.signal_tracker.pending_confirmation["confirmed"]:
+            return
+        
         confirmed = self.signal_tracker.check_confirmation(self.current_candle)
         if confirmed is False:
             self.signals = self.signals.iloc[:-1]
+        else:
+            print(f"Confirmed signal: {confirmed}")
+            
         
-        
-    
     def check_anticipate_signal(self):
         if not self.current_candle or len(self.df) <= max(BOLLINGER_PERIOD, 20, LENGTH):
             return
@@ -153,11 +175,42 @@ class RealTimeHandler:
                 elif last['trend'] == -1 and prev['trend'] == 1:
                     self.process_verify_signal(last, prev, "SELL")
                     self.signal_tracker.register_anticipate_signal(last, "SELL")
+            else:
+                # todo: confirm early signal
+                self.confirm_early_signal()
+
         else:
            pass
             
             
+    def confirm_early_signal(self):
+        pending = self.signal_tracker.pending_confirmation
+        if not pending:
+            return
         
+        is_confirmed = pending["confirmed"]
+
+        if is_confirmed:
+            return
+        
+        signal_type = pending["type"]
+        entry_price = pending["signal"]["close"]
+        current_price = self.df.iloc[-1]["close"]
+        candle_open = self.df.iloc[-1]["open"]
+
+        body_size = abs(current_price - candle_open)
+        atr = self.df.iloc[-1].get("tr", 1e-6)
+
+        print(f"Body size: {body_size} - ATR: {atr}")
+        print(f"Early confirmation body size: {body_size < atr * EARLY_CONFIRMATION_BODY_MULTIPLIER}")
+        # Puedes ajustar el factor (1.2, 1.5, etc.)
+        if body_size < atr * EARLY_CONFIRMATION_BODY_MULTIPLIER:
+            return
+        
+        print("🚨 Confirmación temprana por cuerpo fuerte de vela")
+        confirmed = self.signal_tracker.check_confirmation(self.df.iloc[-1], early_confirmation=True)
+        if confirmed:
+            self.signal_sent_in_candle = True
                     
     def process_verify_signal(self, last, prev, signal_type):
         if self.last_signal_type == signal_type:
