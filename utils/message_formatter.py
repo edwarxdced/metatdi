@@ -1,46 +1,26 @@
-def format_trade_message(direction, last_row, df, lookback=5):
+from datetime import datetime
+
+from enums.type_signals import TypeSignal
+from utils.trades_utils import get_trade_parameters
+
+
+def format_trade_message(direction: TypeSignal, last_row, df):
     entry = last_row['close']
     rsi = last_row['rsi']
-
-    # Determinar zona
-    if  "BUY" in direction:
-        if rsi <= 25:
-            zone = "Hard Buy"
-            rrr = 2.0
-        elif rsi <= 35:
-            zone = "Soft Buy"
-            rrr = 1.0
-        else:
-            zone = "Neutral Buy"
-            rrr = 1.0
-    elif "SELL" in direction:
-        if rsi >= 75:
-            zone = "Hard Sell"
-            rrr = 2.0
-        elif rsi >= 65:
-            zone = "Soft Sell"
-            rrr = 1.0
-        else:
-            zone = "Neutral Sell"
-            rrr = 1.0
-    else:
-        zone = "N/A"
-        rrr = 1.0
-
-    # SL basado en swing previo
-    icon = "🟢" if "BUY" in direction else "🔴"
-    if "BUY" in direction:
-        sl = df['low'].iloc[-lookback:].min()
-        tp = entry + (entry - sl) * rrr
-    else:
-        sl = df['high'].iloc[-lookback:].max()
-        tp = entry - (sl - entry) * rrr
+    tp, sl, rrr, zone = get_trade_parameters(
+        direction=direction,
+        rsi=rsi,
+        entry=entry,
+        stop_distance=2,
+        df=df
+    )
+    icon = "🟢" if direction.value == TypeSignal.BUY.value else "🔴"
 
     msg = f"""
 🚨 New Signal Anticipated
 
 
-{icon} {direction}
+{icon} {direction.value}
 🎯 Entry Price: {entry:.2f}
 💰 TP: {tp:.2f}
 🛡️ SL: {sl:.2f}
@@ -58,9 +38,9 @@ def format_rejection_alert(signal_type, confirm_price, confirm_time, early_confi
     early_confirmation_msg = "🚨 Early Confirmation" if early_confirmation else "🔢 Close candle confirmation"
     msg = f"""
 ❌ Signal Rejected
-        
-{icon} {signal_type} (No Confirmed)  
-⛔ Close without confirmation: {confirm_price:.2f}  
+
+{icon} {signal_type} (No Confirmed)
+⛔ Close without confirmation: {confirm_price:.2f}
 🕒 Time: {confirm_time}
 
 
@@ -70,7 +50,6 @@ def format_rejection_alert(signal_type, confirm_price, confirm_time, early_confi
 
 
 def format_confirmation_alert(signal_type, confirm_price, confirm_time, early_confirmation: bool = False):
-    
     icon = "🟢" if signal_type == "BUY" else "🔴"
     early_confirmation_msg = "🚨 Early Confirmation" if early_confirmation else "🔢 Close candle confirmation"
     msg = f"""
@@ -85,4 +64,53 @@ def format_confirmation_alert(signal_type, confirm_price, confirm_time, early_co
     return msg
 
 
+def format_position_opened_message(trade_type: TypeSignal, entry_price: float, tp: float, sl: float, time: datetime):
+    msg = f"""
+🚀 Trade OPENED ({trade_type.value}) at {entry_price:.2f}
 
+💰 TP: {tp:.2f}
+🛡️ SL: {sl:.2f}
+🕒 Time: {time}
+"""
+    return msg
+
+
+def format_break_even_applied_message(trade_type: TypeSignal, entry_price: float, time: datetime) -> str:
+    msg = f"""
+🟡 Break-Even applied.
+SL moved to entry ({entry_price:.2f})
+🕒 Time: {time}
+"""
+    return msg
+
+
+def format_trailing_stop_updated_message(trade_type: TypeSignal, current_price: float, time: datetime) -> str:
+    msg = f"""
+🔁 Trailing SL updated to {current_price:.2f}
+🔢 Current Price: {current_price:.2f}
+🕒 Time: {time}
+"""
+    return msg
+
+
+def format_position_closed_message(
+    trade_type: TypeSignal, price: float, time: datetime,
+    reason: str, entry: float, lot_size: float
+) -> str:
+    icon = "💰" if reason == "TP" else "🛑"
+    if trade_type.value == "BUY":
+        profit = (price - entry) * lot_size
+    else:  # SELL
+        profit = (entry - price) * lot_size
+
+    result = "Profit" if profit >= 0 else "Loss"
+    msg = f"""
+{icon} Trade CLOSED ({trade_type.value}) at {price:.2f}
+
+💼 {result}: {profit:.2f} USD
+📊 Entry: {entry:.2f} | Lot: {lot_size}
+💰 Exit: {price:.2f}
+🕒 Time: {time}
+🔢 Reason: {reason}
+"""
+    return msg

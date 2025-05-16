@@ -173,3 +173,16 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+.vscode/
+/data/
+/history/
+/export/
+/capital/
+parse_ohlc.py
+enums/ib/
+ib.py
+*.zip
+*.csv
+!/history/gold_m15.csv
+!/history/gold_minute_ticks.csv
+!/export/backtest_15m_positions_1745947487.csv

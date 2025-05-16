@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0  # Use the latest version or the version you need
+    hooks:
+      - id: mypy
+        args: [--follow-imports=skip, --allow-untyped-defs, --check-untyped-defs, --disallow-any-generics, --disable-error-code=import-untyped, --ignore-missing-imports]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.8
+    hooks:
+      - id: bandit
+        args:
+          - "--severity-level=low"
+          - "--confidence-level=medium"
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args:
+          - "--max-line-length=120"
+          - "--ignore=E261,E262,E101,W191,E401,E128,W293,E704,E701,E227,E124,E275,E126,E251,W504,E122,E252,E131"
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-simplify
