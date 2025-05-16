@@ -3,6 +3,7 @@ import os
 
 load_dotenv()
 BOLLINGER_PERIOD = 34
+
 DESVIATION = 1.75
 MULTIPLIER = 0.9
 ATR_PERIOD = 1
